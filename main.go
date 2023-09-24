@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware/v2"
+	"github.com/auth0/go-jwt-middleware/v2/validator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -47,6 +49,16 @@ func getEstudiantes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
 
 	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	claims := token.CustomClaims.(*middleware.CustomClaims)
+	if !claims.HasScope("read:estudiantes") {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Insufficient scope."}`))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(listaEstudiantes)
 }
