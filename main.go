@@ -64,6 +64,24 @@ func getEstudiantes(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEstudiante(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	claims := token.CustomClaims.(*middleware.CustomClaims)
+	if !claims.HasScope("read:estudiantes") {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Insufficient scope."}`))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
 	vars := mux.Vars(r)
 	estudianteID, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -81,6 +99,22 @@ func getEstudiante(w http.ResponseWriter, r *http.Request) {
 }
 
 func addEstudiante(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	claims := token.CustomClaims.(*middleware.CustomClaims)
+	if !claims.HasScope("write:estudiantes") {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Insufficient scope."}`))
+		return
+	}
+
 	var newEstudiante Estudiante
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -91,12 +125,27 @@ func addEstudiante(w http.ResponseWriter, r *http.Request) {
 
 	newEstudiante.ID = len(listaEstudiantes) + 1
 	listaEstudiantes = append(listaEstudiantes, newEstudiante)
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newEstudiante)
 }
 
 func deleteEstudiante(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	claims := token.CustomClaims.(*middleware.CustomClaims)
+	if !claims.HasScope("write:estudiantes") {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Insufficient scope."}`))
+		return
+	}
+
 	vars := mux.Vars(r)
 	estudianteID, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -113,6 +162,22 @@ func deleteEstudiante(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateEstudiante(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	token := r.Context().Value(jwtmiddleware.ContextKey{}).(*validator.ValidatedClaims)
+
+	claims := token.CustomClaims.(*middleware.CustomClaims)
+	if !claims.HasScope("write:estudiantes") {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Insufficient scope."}`))
+		return
+	}
+
 	vars := mux.Vars(r)
 	estudianteID, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -155,13 +220,22 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.HandleFunc("/", indexRoute)
-	//router.HandleFunc("/estudiantes", getEstudiantes).Methods("GET")
-	router.Handle("/estudiantes", middleware.EnsureValidToken()(http.HandlerFunc(getEstudiantes)))
 
-	//ruteo anterior
-	router.HandleFunc("/estudiantes", addEstudiante).Methods("POST")
-	router.HandleFunc("/estudiantes/{id}", getEstudiante).Methods("GET")
-	router.HandleFunc("/estudiantes/{id}", deleteEstudiante).Methods("DELETE")
-	router.HandleFunc("/estudiantes/{id}", updateEstudiante).Methods("PUT")
+	//lineas comentadas --> ruteo sin autenticacion y autorizacion
+	//router.HandleFunc("/estudiantes", getEstudiantes).Methods("GET")
+	router.Handle("/estudiantes", middleware.EnsureValidToken()(http.HandlerFunc(getEstudiantes))).Methods("GET")
+
+	//router.HandleFunc("/estudiantes", addEstudiante).Methods("POST")
+	router.Handle("/estudiantes", middleware.EnsureValidToken()(http.HandlerFunc(addEstudiante))).Methods("POST")
+
+	// router.HandleFunc("/estudiantes/{id}", getEstudiante).Methods("GET")
+	router.Handle("/estudiantes/{id}", middleware.EnsureValidToken()(http.HandlerFunc(getEstudiante))).Methods("GET")
+
+	// router.HandleFunc("/estudiantes/{id}", deleteEstudiante).Methods("DELETE")
+	router.Handle("/estudiantes/{id}", middleware.EnsureValidToken()(http.HandlerFunc(deleteEstudiante))).Methods("DELETE")
+
+	// router.HandleFunc("/estudiantes/{id}", updateEstudiante).Methods("PUT")
+	router.Handle("/estudiantes/{id}", middleware.EnsureValidToken()(http.HandlerFunc(updateEstudiante))).Methods("PUT")
+
 	log.Fatal(http.ListenAndServe(":3000", router))
 }
